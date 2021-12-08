@@ -1,5 +1,7 @@
 const router = require("express").Router();
 
+const uploader = require("../config/cloudinary.config");
+
 const isAuthenticated = require("../middlewares/isAuthenticated");
 const isAdmin = require("../middlewares/isAdmin");
 const attachCurrentUser = require("../middlewares/attachCurrentUser");
@@ -9,7 +11,23 @@ const UserModel = require("../models/User.model");
 
 // CRUD
 
+
 // Crud Create (POST) - só admin
+
+
+// upload de arquivos no cloudinary
+
+router.post("/upload", isAuthenticated, attachCurrentUser, isAdmin, uploader.single("picture"), (req, res) => {
+  if (!req.file) {
+    return res.status(500).json({msg: "upload de arquivo falhou"})
+  }
+
+  console.log(req.file)
+
+  return res.status(200).json({url:req.file.path})
+})
+
+
 router.post("/create", isAuthenticated, attachCurrentUser, async (req, res) => {
   try {
     const user = await UserModel.findOne({ _id: req.currentUser._id });
