@@ -9,7 +9,6 @@ const isAuthenticated = require("../middlewares/isAuthenticated");
 
 // Cria comentário apenas se o user não é o admin do estabelecimento
 router.post("/review", isAuthenticated, async (req, res) => {
-
   try {
     const user = await UserModel.findOne({ _id: req.user._id });
     const { comment, establishmentId, rate } = req.body;
@@ -69,7 +68,6 @@ router.patch("/review/edit/:id", isAuthenticated, async (req, res) => {
 });
 
 // Excluir comentário (Só se o user for dono do comentário)
-
 router.delete("/review/delete/:id", isAuthenticated, async (req, res) => {
   try {
     
