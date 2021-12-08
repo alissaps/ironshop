@@ -6,15 +6,16 @@ const EstablishmentModel = require("../models/Establishment.model");
 const UserModel = require("../models/User.model");
 
 const isAuthenticated = require("../middlewares/isAuthenticated");
+const attachCurrentUser = require("../middlewares/attachCurrentUser");
 
 // Cria comentário apenas se o user não é o admin do estabelecimento
-router.post("/review", isAuthenticated, async (req, res) => {
+router.post("/create", isAuthenticated, attachCurrentUser, async (req, res) => {
   try {
-    const user = await UserModel.findOne({ _id: req.user._id });
+    const user = await UserModel.findOne({ _id: req.currentUser._id });
     const { comment, establishmentId, rate } = req.body;
 
     // Saber se o user é o dono do estabelecimento
-    if (user.establishmentId.includes(req.body.establishmentId)) {
+    if (user.userEstablishment === req.body.establishmentId) {
       return res.status(403).json({
         message:
           "Acesso negado: você não pode fazer comentário no seu próprio estabelecimento",
@@ -42,11 +43,11 @@ router.post("/review", isAuthenticated, async (req, res) => {
 });
 
 // Atualizar comentário (só se for o dono do comentário)
-router.patch("/review/edit/:id", isAuthenticated, async (req, res) => {
+router.patch("/edit/:id", isAuthenticated, attachCurrentUser, async (req, res) => {
   try {
     const review = await ReviewModel.findOne({ _id: req.params.id });
 
-    // Verificar se o user é o dono do comentário
+    // Verificar se o user é o dono do review
     if (review.userId != req.user._id) {
       return res.status(403).json({
         message:
@@ -56,7 +57,7 @@ router.patch("/review/edit/:id", isAuthenticated, async (req, res) => {
 
     const reviewUpdated = await ReviewModel.findOneAndUpdate(
       { _id: req.params.id },
-      { $set: { comment: req.body.comment, rate: req.body.rate } },
+      { $set:  req.body  },
       { new: true, runValidators: true }
     );
 
@@ -68,14 +69,22 @@ router.patch("/review/edit/:id", isAuthenticated, async (req, res) => {
 });
 
 // Excluir comentário (Só se o user for dono do comentário)
-router.delete("/review/delete/:id", isAuthenticated, async (req, res) => {
+router.delete("/delete/:id", isAuthenticated, attachCurrentUser, async (req, res) => {
   try {
     
     const review = await ReviewModel.findOne({ _id: req.params.id });
-    const user = await UserModel.findOne({ _id: req.user._id });
+    const user = await UserModel.findOne({ _id: req.currentUser._id });
 
     // Verificar se o user é o dono do comentário
-    if (review.userId == user._id) {
+    console.log(review.userId)
+    console.log(user._id)
+
+    if (review.userId !== currentUser._id) {
+        return res.status(403).json({
+            message:
+              "Acesso negado: você não tem autorização para excluir esse comentário",
+          });
+    }
       
       await EstablishmentModel.findOneAndUpdate(
         { _id: review.establishmentId },
@@ -83,21 +92,16 @@ router.delete("/review/delete/:id", isAuthenticated, async (req, res) => {
       );
 
       const deletedReview = await ReviewModel.deleteOne({ _id: req.params.id });
+      res.status(200).json({});
 
       if (deletedReview.deletedCount < 1) {
-        return res.status(404).json({ message: "Comentário não encontrado" });
+        return res.status(404).json({ message: "Comment not found" });
       }
 
-      return res.status(200).json({});
-    }
 
-    res.status(403).json({
-      message:
-        "Acesso negado: você não tem autorização para excluir esse comentário",
-    });
   } catch (err) {
     console.log(err);
-    res.status(404).json({ message: "Comentário não encontrado" });
+    res.status(404).json({ message: "Comment not found" });
   }
 });
 
